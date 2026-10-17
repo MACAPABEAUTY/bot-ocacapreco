@@ -31,6 +31,7 @@ sys.path.insert(0, AQUI)
 
 import arte  # noqa: E402
 import ml    # noqa: E402
+import instagram  # noqa: E402
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
 OWNER_ID = os.environ.get("OWNER_ID", "").strip()
@@ -60,7 +61,7 @@ MODELO = (
     "https://meli.la/SEU-LINK\n\n"
     "• pode mandar com FOTO (texto na legenda)\n"
     "• comece com \"teste\" para ver só a prévia\n\n"
-    "Comandos: /buscar /status /conectar /diagnostico"
+    "Comandos: /buscar /status /conectar /diagnostico /instagram"
 )
 
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -226,12 +227,32 @@ def enviar_artes(chat_id, oferta, foto_bytes):
         enviar(chat_id, "🎨 Sem foto do produto, então não gerei as artes desta vez.")
         return
     dados = {"nome": oferta["nome"], "por": oferta["por"], "de": oferta.get("de")}
+    legenda = arte.legenda_instagram(dados, TELEGRAM_LINK)
+    artes = {}
     for formato, rotulo in (("story", "📱 Story (1080×1920)"), ("post", "🖼️ Post do feed (1080×1350)")):
-        png = arte.gerar(dados, foto_bytes, formato, TELEGRAM_LINK)
-        api("sendDocument", arquivos={"document": (f"ocacapreco_{formato}.png", png)},
+        artes[formato] = arte.gerar(dados, foto_bytes, formato, TELEGRAM_LINK)
+        api("sendDocument", arquivos={"document": (f"ocacapreco_{formato}.png", artes[formato])},
             chat_id=chat_id, caption=rotulo)
-    enviar(chat_id, "📝 <b>Legenda para o Instagram</b> (toque para copiar):\n\n<code>"
-           + html.escape(arte.legenda_instagram(dados, TELEGRAM_LINK)) + "</code>")
+
+    cfg_ig = CFG.get("instagram", {})
+    if instagram.configurado() and (cfg_ig.get("feed") or cfg_ig.get("story")):
+        linhas = ["📸 <b>Instagram</b>"]
+        if cfg_ig.get("feed"):
+            try:
+                link = instagram.publicar(artes["post"], legenda=legenda)
+                linhas.append("✅ Post no feed publicado" + (f": {link}" if link else ""))
+            except Exception as e:
+                linhas.append(f"❌ Feed: {html.escape(str(e))}")
+        if cfg_ig.get("story"):
+            try:
+                instagram.publicar(artes["story"], story=True)
+                linhas.append("✅ Story publicado (lembre de adicionar a figurinha de link pelo app, se quiser)")
+            except Exception as e:
+                linhas.append(f"❌ Story: {html.escape(str(e))}")
+        enviar(chat_id, "\n".join(linhas))
+    else:
+        enviar(chat_id, "📝 <b>Legenda para o Instagram</b> (toque para copiar):\n\n<code>"
+               + html.escape(legenda) + "</code>")
 
 
 def concluir_publicacao(chat_id, oferta, foto_publicar, foto_bytes):
@@ -395,6 +416,20 @@ def tratar(msg, pedidos):
     if cmd == "/diagnostico":
         cat = next(iter(CFG.get("categorias", {"MLB1246": ""})))
         enviar(chat_id, "🩺 <b>Diagnóstico</b>\n\n" + html.escape(ml.diagnostico(cat)))
+        return
+    if cmd == "/instagram":
+        if not instagram.configurado():
+            enviar(chat_id, "📸 Instagram ainda não configurado: falta o segredo IG_TOKEN no GitHub.")
+            return
+        try:
+            c = instagram.conta()
+            cfg_ig = CFG.get("instagram", {})
+            enviar(chat_id, f"📸 Instagram conectado: @{html.escape(str(c.get('username')))} "
+                            f"({html.escape(str(c.get('account_type')))})\n"
+                            f"Feed automático: {'ligado ✅' if cfg_ig.get('feed') else 'desligado'}\n"
+                            f"Story automático: {'ligado ✅' if cfg_ig.get('story') else 'desligado'}")
+        except Exception as e:
+            enviar(chat_id, "❌ " + html.escape(str(e)))
         return
     if cmd == "/buscar":
         pedidos["buscar"] = True
