@@ -207,6 +207,21 @@ def detalhes(id_, tipo="ITEM"):
     return info
 
 
+def subcategorias(categoria):
+    st, resp = get(f"/categories/{categoria}")
+    if st != 200 or not isinstance(resp, dict):
+        return []
+    return [c["id"] for c in (resp.get("children_categories") or []) if c.get("id")]
+
+
+def link_afiliado(link, matt_word, matt_tool):
+    """Monta o link do produto com o seu código de afiliado."""
+    base = (link or "").split("#")[0].split("?")[0]
+    if not base:
+        return None
+    return f"{base}?matt_word={urllib.parse.quote(matt_word)}&matt_tool={urllib.parse.quote(str(matt_tool))}"
+
+
 def mais_vendidos(categoria, limite=15):
     st, resp = get(f"/highlights/MLB/category/{categoria}")
     if st != 200:

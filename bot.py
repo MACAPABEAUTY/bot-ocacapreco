@@ -61,7 +61,7 @@ MODELO = (
     "https://meli.la/SEU-LINK\n\n"
     "• pode mandar com FOTO (texto na legenda)\n"
     "• comece com \"teste\" para ver só a prévia\n\n"
-    "Comandos: /buscar /status /conectar /diagnostico /instagram"
+    "Comandos: /rodada /buscar /status /conectar /diagnostico /instagram"
 )
 
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -379,6 +379,116 @@ def publicar_sugestao(chat_id, msg, id_):
     concluir_publicacao(chat_id, oferta, d.get("foto"), baixar(d["foto"]) if d.get("foto") else None)
 
 
+# ================================================================ Modo automático (10 por hora)
+def hora_local():
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=-3)))
+
+
+def proximas_categorias(qtd):
+    """Rodízio entre categorias e subcategorias, para achar produtos novos sempre."""
+    rot = ler_json("rotacao.json", {})
+    fila = rot.get("fila") or list(CFG.get("categorias", {}).keys())
+    expandidas = set(rot.get("expandidas", []))
+    pos = rot.get("pos", 0) % max(1, len(fila))
+    escolhidas = []
+    for _ in range(min(qtd, len(fila))):
+        cat = fila[pos]
+        escolhidas.append(cat)
+        if cat not in expandidas and len(fila) < 800:
+            try:
+                for filho in ml.subcategorias(cat):
+                    if filho not in fila:
+                        fila.append(filho)
+            except Exception as e:
+                print("Subcategorias falharam:", cat, e)
+            expandidas.add(cat)
+        pos = (pos + 1) % len(fila)
+    salvar_json("rotacao.json", {"fila": fila, "pos": pos, "expandidas": sorted(expandidas)})
+    return escolhidas
+
+
+def rodada_automatica():
+    cfg = CFG.get("auto", {})
+    afil = CFG.get("afiliado", {})
+    if not cfg.get("ativo"):
+        return
+    agora_l = hora_local()
+    ini, fim = cfg.get("horario", [8, 23])
+    if not (ini <= agora_l.hour <= fim):
+        print(f"Fora do horário ({agora_l:%H:%M}), sem publicações automáticas.")
+        return
+    if not (afil.get("matt_word") and afil.get("matt_tool")):
+        enviar(OWNER_ID, "⚠️ Modo automático: falta o código de afiliado no config.json.")
+        return
+    if not ml.conectado():
+        enviar(OWNER_ID, "⚠️ Modo automático parado: conecte o Mercado Livre com /conectar.")
+        return
+
+    publicados = ler_json("publicados.json", {})
+    marca = agora_l.strftime("%Y-%m-%d %H")
+    if ler_json("ultima_rodada.json", {}).get("marca") == marca:
+        print("Rodada desta hora já foi feita.")
+        return
+
+    quantos = cfg.get("por_hora", 10)
+    minimo = cfg.get("desconto_minimo", 15)
+    candidatos, vistos_rodada = [], set()
+    for cat in proximas_categorias(cfg.get("categorias_por_rodada", 8)):
+        try:
+            lista = ml.mais_vendidos(cat, 20)
+        except ml.ErroML as e:
+            print("Categoria pulada:", cat, e)
+            continue
+        for id_, tipo in lista:
+            if id_ in publicados or id_ in vistos_rodada:
+                continue
+            vistos_rodada.add(id_)
+            try:
+                d = ml.detalhes(id_, tipo)
+            except Exception as e:
+                print("Produto ignorado", id_, e)
+                continue
+            if d and d["desconto"] >= minimo and d.get("link_produto") and d.get("foto"):
+                candidatos.append(d)
+        if len(candidatos) >= quantos * 3:
+            break
+
+    candidatos.sort(key=lambda d: d["desconto"], reverse=True)
+    escolhidos = candidatos[:quantos]
+    ig_horas = cfg.get("instagram_horas", [])
+    ig_dia = ler_json("instagram_dia.json", {})
+    hoje = agora_l.strftime("%Y-%m-%d")
+    post_ig = agora_l.hour in ig_horas and str(agora_l.hour) not in ig_dia.get(hoje, [])
+
+    feitos = 0
+    for i, d in enumerate(escolhidos):
+        link = ml.link_afiliado(d["link_produto"], afil["matt_word"], afil["matt_tool"])
+        oferta = {"nome": d["nome"], "por": d["por"], "de": d.get("de"), "vantagens": [], "link": link}
+        try:
+            if i == 0 and post_ig:  # o melhor da rodada também vai para o Instagram
+                concluir_publicacao(OWNER_ID, oferta, d["foto"], baixar(d["foto"]))
+                ig_dia = {hoje: ig_dia.get(hoje, []) + [str(agora_l.hour)]}
+                salvar_json("instagram_dia.json", ig_dia)
+            else:
+                publicar(CANAL, montar_post(oferta), d["foto"])
+            publicados[d["id"]] = int(time.time())
+            feitos += 1
+            salvar_json("publicados.json", publicados)
+        except Exception as e:
+            print("Falha ao publicar", d["id"], e)
+        if i < len(escolhidos) - 1:
+            time.sleep(cfg.get("intervalo_segundos", 20))
+
+    salvar_json("ultima_rodada.json", {"marca": marca})
+    meta = cfg.get("meta", 5000)
+    if cfg.get("avisar_cada_rodada", True):
+        enviar(OWNER_ID, f"🤖 Rodada das {agora_l:%H:%M}: {feitos} oferta(s) publicada(s) no canal"
+                         + (" (1 também no Instagram)" if post_ig and feitos else "")
+                         + f"\n📦 Total: {len(publicados)} / {meta}"
+                         + ("" if feitos else f"\nNenhum produto novo com {minimo}% OFF nas categorias desta hora."))
+
+
 # ================================================================ Comente QUERO
 def verificar_comentarios(cfg_com):
     posts = ler_json("posts_ig.json", {})
@@ -453,6 +563,10 @@ def tratar(msg, pedidos):
         enviar(chat_id, f"🎯 Canal: {CANAL}\n"
                         f"🔌 Mercado Livre: {'conectado ✅' if ml.conectado() else 'não conectado ❌ (/conectar)'}\n"
                         f"📉 Desconto mínimo: {CFG.get('desconto_minimo', 20)}%\n"
+                        f"🤖 Modo automático: {'ligado ✅' if CFG.get('auto', {}).get('ativo') else 'desligado'} "
+                        f"({CFG.get('auto', {}).get('por_hora', 10)}/hora, "
+                        f"{CFG.get('auto', {}).get('horario', [8, 23])[0]}h–{CFG.get('auto', {}).get('horario', [8, 23])[1]}h)\n"
+                        f"📦 Publicados: {len(ler_json('publicados.json', {}))} / {CFG.get('auto', {}).get('meta', 5000)}\n"
                         f"📂 Categorias:\n{cats}")
         return
     if cmd == "/diagnostico":
@@ -475,6 +589,11 @@ def tratar(msg, pedidos):
                             f"({len(ler_json('posts_ig.json', {}))} post(s) sendo vigiados)")
         except Exception as e:
             enviar(chat_id, "❌ " + html.escape(str(e)))
+        return
+    if cmd == "/rodada":
+        pedidos["auto"] = True
+        salvar_json("ultima_rodada.json", {})
+        enviar(chat_id, "🤖 Rodando o modo automático agora…")
         return
     if cmd == "/buscar":
         pedidos["buscar"] = True
@@ -516,7 +635,7 @@ def tratar(msg, pedidos):
 def main():
     if not TOKEN:
         sys.exit("Falta o segredo TELEGRAM_TOKEN.")
-    pedidos = {"buscar": MODO == "buscar"}
+    pedidos = {"buscar": MODO == "buscar", "auto": False}
     atualizacoes = api("getUpdates", timeout=0, allowed_updates=["message"])
     print(f"Modo: {MODO} · {len(atualizacoes)} mensagem(ns) nova(s).")
     for upd in atualizacoes:
@@ -538,6 +657,13 @@ def main():
             verificar_comentarios(cfg_com)
         except Exception as e:
             print("Erro nos comentários:", e)
+
+    if (MODO == "auto" or pedidos.get("auto")) and OWNER_ID:
+        try:
+            rodada_automatica()
+        except Exception as e:
+            print("Erro no modo automático:", e)
+            enviar(OWNER_ID, f"❌ Erro no modo automático: {html.escape(str(e))}")
 
     if pedidos["buscar"] and OWNER_ID:
         try:
