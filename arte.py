@@ -181,16 +181,18 @@ def gerar(oferta, foto_bytes=None, formato="story", telegram="t.me/ocacapreco"):
     return saida.getvalue()
 
 
-def legenda_instagram(oferta, telegram="t.me/ocacapreco"):
+def legenda_instagram(oferta, telegram="t.me/ocacapreco", palavra=None):
     linhas = [f"🔥 {oferta['nome']}", ""]
     if oferta.get("de"):
         desconto = round((1 - oferta["por"] / oferta["de"]) * 100)
         linhas.append(f"De {reais(oferta['de'])} por {reais(oferta['por'])} ({desconto}% OFF) 😱")
     else:
         linhas.append(f"Por apenas {reais(oferta['por'])} 😱")
+    if palavra:
+        linhas += ["", f"💬 Comente {palavra} que eu te mando o link no Direct! 📩"]
     linhas += [
         "",
-        "👉 O link está no nosso canal de ofertas no Telegram (link na bio).",
+        "👉 Mais ofertas todo dia no nosso canal do Telegram (link na bio).",
         f"🎯 {telegram}",
         "",
         "⚠️ Preço pode mudar a qualquer momento.",

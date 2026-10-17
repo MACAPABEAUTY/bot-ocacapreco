@@ -147,7 +147,8 @@ def _para_jpeg(png):
 
 # ---------------------------------------------------------------- Publicar
 def publicar(png, legenda=None, story=False):
-    """Publica uma imagem no feed (com legenda) ou no story. Retorna o link do post, se houver."""
+    """Publica uma imagem no feed (com legenda) ou no story.
+    Retorna (id do post, link do post)."""
     tk = token()
     ig_id = conta().get("user_id")
     nome = f"{int(time.time())}_{'story' if story else 'feed'}.jpg"
@@ -175,10 +176,82 @@ def publicar(png, legenda=None, story=False):
         st, r = _http("POST", f"{GRAPH}/{ig_id}/media_publish", {"creation_id": container, "access_token": tk})
         if st != 200 or not r.get("id"):
             raise ErroIG(f"Falha ao publicar no Instagram ({st}): {_erro(r)}")
-        st, p = _http("GET", f"{GRAPH}/{r['id']}?" + urllib.parse.urlencode({"fields": "permalink", "access_token": tk}))
-        return (p or {}).get("permalink") if st == 200 else None
+        media_id = r["id"]
+        st, p = _http("GET", f"{GRAPH}/{media_id}?" + urllib.parse.urlencode({"fields": "permalink", "access_token": tk}))
+        return media_id, ((p or {}).get("permalink") if st == 200 else None)
     finally:
         try:
             _apagar_imagem(caminho, sha)
         except Exception as e:
             print("Não apaguei a imagem temporária:", e)
+
+
+# ---------------------------------------------------------------- Comente QUERO
+def _normalizar(texto):
+    import unicodedata
+    t = unicodedata.normalize("NFD", texto or "")
+    return "".join(c for c in t if unicodedata.category(c) != "Mn").upper()
+
+
+def comentarios(media_id):
+    tk = token()
+    st, r = _http("GET", f"{GRAPH}/{media_id}/comments?" + urllib.parse.urlencode(
+        {"fields": "id,text,username,timestamp", "limit": 50, "access_token": tk}))
+    if st != 200:
+        raise ErroIG(f"Não consegui ler os comentários ({st}): {_erro(r)}")
+    return (r or {}).get("data") or []
+
+
+def responder_direct(comment_id, texto):
+    """Resposta privada: manda uma mensagem no Direct de quem comentou (1 por comentário, até 7 dias)."""
+    tk = token()
+    ig_id = conta().get("user_id")
+    st, r = _http("POST", f"{GRAPH}/{ig_id}/messages?" + urllib.parse.urlencode({"access_token": tk}),
+                  corpo_json={"recipient": {"comment_id": comment_id}, "message": {"text": texto}})
+    if st != 200:
+        raise ErroIG(f"Direct não enviado ({st}): {_erro(r)}")
+
+
+def responder_publico(comment_id, texto):
+    tk = token()
+    st, r = _http("POST", f"{GRAPH}/{comment_id}/replies", {"message": texto, "access_token": tk})
+    if st != 200:
+        raise ErroIG(f"Resposta no comentário não enviada ({st}): {_erro(r)}")
+
+
+def processar_comentarios(posts, respondidos, palavra, msg_direct, msg_publica, canal_link):
+    """posts = {media_id: {nome, link, quando}}; respondidos = {comment_id: quando}.
+    Retorna (enviados, erros)."""
+    agora = time.time()
+    enviados, erros = [], []
+    alvo = _normalizar(palavra)
+    for media_id, post in posts.items():
+        if agora - post.get("quando", 0) > 7 * 86400:  # o Instagram só permite responder até 7 dias
+            continue
+        try:
+            lista = comentarios(media_id)
+        except ErroIG as e:
+            erros.append(str(e))
+            continue
+        for c in lista:
+            cid = c.get("id")
+            if not cid or cid in respondidos:
+                continue
+            if alvo not in _normalizar(c.get("text")):
+                continue
+            texto = msg_direct.format(nome=post.get("nome", "a oferta"), link=post.get("link", canal_link),
+                                      canal=canal_link, usuario=c.get("username") or "")
+            try:
+                responder_direct(cid, texto)
+                respondidos[cid] = agora
+                enviados.append(c.get("username") or "alguém")
+            except ErroIG as e:
+                erros.append(str(e))
+                respondidos[cid] = agora  # não tenta de novo a cada execução
+                continue
+            if msg_publica:
+                try:
+                    responder_publico(cid, msg_publica.format(usuario=c.get("username") or ""))
+                except ErroIG as e:
+                    print("Resposta pública falhou:", e)
+    return enviados, erros

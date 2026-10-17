@@ -227,7 +227,9 @@ def enviar_artes(chat_id, oferta, foto_bytes):
         enviar(chat_id, "🎨 Sem foto do produto, então não gerei as artes desta vez.")
         return
     dados = {"nome": oferta["nome"], "por": oferta["por"], "de": oferta.get("de")}
-    legenda = arte.legenda_instagram(dados, TELEGRAM_LINK)
+    cfg_com = CFG.get("comente", {})
+    palavra = cfg_com.get("palavra", "QUERO") if cfg_com.get("ativo") else None
+    legenda = arte.legenda_instagram(dados, TELEGRAM_LINK, palavra)
     artes = {}
     for formato, rotulo in (("story", "📱 Story (1080×1920)"), ("post", "🖼️ Post do feed (1080×1350)")):
         artes[formato] = arte.gerar(dados, foto_bytes, formato, TELEGRAM_LINK)
@@ -239,13 +241,17 @@ def enviar_artes(chat_id, oferta, foto_bytes):
         linhas = ["📸 <b>Instagram</b>"]
         if cfg_ig.get("feed"):
             try:
-                link = instagram.publicar(artes["post"], legenda=legenda)
+                media_id, link = instagram.publicar(artes["post"], legenda=legenda)
                 linhas.append("✅ Post no feed publicado" + (f": {link}" if link else ""))
+                posts = ler_json("posts_ig.json", {})
+                posts[media_id] = {"nome": oferta["nome"], "link": oferta["link"], "quando": time.time()}
+                posts = {k: v for k, v in posts.items() if time.time() - v.get("quando", 0) < 8 * 86400}
+                salvar_json("posts_ig.json", posts)
             except Exception as e:
                 linhas.append(f"❌ Feed: {html.escape(str(e))}")
         if cfg_ig.get("story"):
             try:
-                instagram.publicar(artes["story"], story=True)
+                instagram.publicar(artes["story"], story=True)  # retorna (id, link)
                 linhas.append("✅ Story publicado (lembre de adicionar a figurinha de link pelo app, se quiser)")
             except Exception as e:
                 linhas.append(f"❌ Story: {html.escape(str(e))}")
@@ -373,6 +379,35 @@ def publicar_sugestao(chat_id, msg, id_):
     concluir_publicacao(chat_id, oferta, d.get("foto"), baixar(d["foto"]) if d.get("foto") else None)
 
 
+# ================================================================ Comente QUERO
+def verificar_comentarios(cfg_com):
+    posts = ler_json("posts_ig.json", {})
+    if not posts:
+        return
+    respondidos = ler_json("respondidos_ig.json", {})
+    agora = time.time()
+    respondidos = {k: v for k, v in respondidos.items() if agora - v < 10 * 86400}
+    enviados, erros = instagram.processar_comentarios(
+        posts, respondidos,
+        palavra=cfg_com.get("palavra", "QUERO"),
+        msg_direct=cfg_com.get("direct", "Oi! 🎯 Aqui está o link de {nome}:\n{link}\n\n🔥 Mais ofertas todo dia no canal: {canal}"),
+        msg_publica=cfg_com.get("publico", ""),
+        canal_link=f"https://{TELEGRAM_LINK}",
+    )
+    salvar_json("respondidos_ig.json", respondidos)
+    if enviados:
+        enviar(OWNER_ID, f"💬 Mandei o link no Direct para {len(enviados)} pessoa(s): "
+                         + ", ".join("@" + html.escape(u) for u in enviados[:10]))
+    if erros:
+        avisos = ler_json("avisos_ig.json", {})
+        novos = [e for e in dict.fromkeys(erros) if agora - avisos.get(e, 0) > 86400]
+        if novos:
+            enviar(OWNER_ID, "⚠️ <b>Comente QUERO</b>\n" + "\n".join(html.escape(e) for e in novos[:3]))
+            for e in novos:
+                avisos[e] = agora
+            salvar_json("avisos_ig.json", avisos)
+
+
 # ================================================================ Mensagens
 def tratar(msg, pedidos):
     chat_id = msg["chat"]["id"]
@@ -434,7 +469,10 @@ def tratar(msg, pedidos):
             enviar(chat_id, f"📸 Instagram conectado: @{html.escape(str(c.get('username')))} "
                             f"({html.escape(str(c.get('account_type')))})\n"
                             f"Feed automático: {'ligado ✅' if cfg_ig.get('feed') else 'desligado'}\n"
-                            f"Story automático: {'ligado ✅' if cfg_ig.get('story') else 'desligado'}")
+                            f"Story automático: {'ligado ✅' if cfg_ig.get('story') else 'desligado'}\n"
+                            f"Comente {html.escape(CFG.get('comente', {}).get('palavra', 'QUERO'))} → Direct: "
+                            f"{'ligado ✅' if CFG.get('comente', {}).get('ativo') else 'desligado'} "
+                            f"({len(ler_json('posts_ig.json', {}))} post(s) sendo vigiados)")
         except Exception as e:
             enviar(chat_id, "❌ " + html.escape(str(e)))
         return
@@ -493,6 +531,13 @@ def main():
                 except Exception:
                     pass
         api("getUpdates", offset=upd["update_id"] + 1, timeout=0)
+
+    cfg_com = CFG.get("comente", {})
+    if cfg_com.get("ativo") and OWNER_ID and instagram.configurado():
+        try:
+            verificar_comentarios(cfg_com)
+        except Exception as e:
+            print("Erro nos comentários:", e)
 
     if pedidos["buscar"] and OWNER_ID:
         try:
