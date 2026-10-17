@@ -1,2 +1,3 @@
 pillow>=10
 cryptography>=42
+edge-tts>=6.1

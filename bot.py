@@ -621,15 +621,18 @@ def enviar_videos(chat_id, qtd=1):
     for d in itens[:qtd]:
         oferta = {"nome": d["nome"], "por": d["por"], "de": d.get("de"), "desconto": d.get("desconto")}
         try:
-            mp4 = video.gerar(oferta, baixar(d["foto"]), telegram=TELEGRAM_LINK)
+            info, cfg_v = {}, CFG.get("video", {})
+            mp4 = video.gerar(oferta, baixar(d["foto"]), telegram=TELEGRAM_LINK, voz=cfg_v.get("voz"), info=info,
+                              velocidade=cfg_v.get("voz_velocidade", "+8%"), tom=cfg_v.get("voz_tom", "+0Hz"))
         except Exception as e:
             print("Vídeo falhou", d.get("id"), e)
             continue
         legenda = video.legenda_tiktok(oferta)
         api("sendVideo", arquivos={"video": ("ocacapreco_video.mp4", mp4)}, chat_id=chat_id,
             supports_streaming="true", width=1080, height=1920,
-            caption=("🎬 <b>Vídeo para TikTok / Reels</b>\n"
-                     "Salve o vídeo, poste e escolha um <b>som em alta</b> no app.\n\n"
+            caption=("🎬 <b>Vídeo para TikTok / Reels</b>"
+                     + (" 🔊 com narração" if info.get("voz") else "")
+                     + "\nSalve o vídeo e poste. Dica: some um <b>som em alta</b> com volume baixo.\n\n"
                      "Legenda (toque para copiar):\n<code>" + html.escape(legenda) + "</code>")[:1024],
             parse_mode="HTML")
         usados[d["id"]] = agora

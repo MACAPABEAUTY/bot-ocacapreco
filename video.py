@@ -6,11 +6,12 @@ Cenas:
   9,0–12s   tela final: link no perfil + canal
 
 O texto fica longe das bordas de baixo e da direita, onde o TikTok põe botões e legenda.
-O vídeo sai com áudio mudo: escolha um som em alta no próprio TikTok ao postar.
+Com voz configurada, sai narrado; no TikTok dá para somar um som em alta com volume baixo.
 """
 import io
 import os
 import random
+import re
 import subprocess
 import tempfile
 
@@ -149,8 +150,68 @@ def _foto_preparada(foto_bytes):
     return f.resize((max(1, int(f.width * escala)), max(1, int(f.height * escala))), Image.LANCZOS)
 
 
-def gerar(oferta, foto_bytes, telegram="t.me/ocacapreco", gancho=None):
-    """Retorna o MP4 (bytes). oferta = {nome, por, de, desconto}."""
+def nome_falado(nome, max_palavras=5):
+    """Tira códigos de modelo (ex.: Aq-230a-1dmq) para a voz não soletrar."""
+    palavras = [p for p in nome.split()
+                if not (re.search(r"\d", p) and re.search(r"[A-Za-z]", p)) and not re.fullmatch(r"[-–|/+]", p)]
+    return " ".join(palavras[:max_palavras])
+
+
+def valor_falado(v):
+    reais_, cent = int(v), int(round((v - int(v)) * 100))
+    if cent == 100:
+        reais_, cent = reais_ + 1, 0
+    txt = f"{reais_} rea{'l' if reais_ == 1 else 'is'}"
+    return txt + (f" e {cent} centavo{'s' if cent != 1 else ''}" if cent else "")
+
+
+def texto_narracao(oferta, gancho, desconto):
+    partes = [gancho.capitalize() + "!", nome_falado(oferta["nome"]) + "."]
+    if oferta.get("de"):
+        partes.append(f"De {valor_falado(oferta['de'])}, por apenas {valor_falado(oferta['por'])}.")
+    else:
+        partes.append(f"Por apenas {valor_falado(oferta['por'])}.")
+    if desconto and desconto >= 10:
+        partes.append(f"São {desconto} por cento de desconto!")
+    partes.append("Quer o link? Tá no perfil. Segue o Caça Preço!")
+    return " ".join(partes)
+
+
+def falar(texto, voz, velocidade="+8%", tom="+0Hz"):
+    """Gera a narração (MP3) com as vozes neurais do Edge. Devolve None se falhar."""
+    try:
+        import asyncio
+        import edge_tts
+
+        async def _rodar():
+            com = edge_tts.Communicate(texto, voz, rate=velocidade, pitch=tom)
+            dados = b""
+            async for parte in com.stream():
+                if parte["type"] == "audio":
+                    dados += parte["data"]
+            return dados
+
+        audio = asyncio.run(asyncio.wait_for(_rodar(), timeout=60))
+        return audio or None
+    except Exception as e:
+        print("Narração falhou:", e)
+        return None
+
+
+def _duracao_audio(caminho):
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                            "-of", "default=nw=1:nk=1", caminho], capture_output=True, text=True, timeout=30)
+        return float(r.stdout.strip())
+    except Exception:
+        return 0.0
+
+
+def gerar(oferta, foto_bytes, telegram="t.me/ocacapreco", gancho=None, voz=None, info=None,
+          velocidade="+8%", tom="+0Hz"):
+    """Retorna o MP4 (bytes). oferta = {nome, por, de, desconto}.
+    voz: nome de voz do Edge (ex.: pt-BR-FranciscaNeural) para narrar; None = sem voz.
+    info: dict opcional que recebe {"voz": True/False}."""
     desconto = oferta.get("desconto")
     if desconto is None and oferta.get("de"):
         desconto = round((1 - oferta["por"] / oferta["de"]) * 100)
@@ -164,27 +225,44 @@ def gerar(oferta, foto_bytes, telegram="t.me/ocacapreco", gancho=None):
 
     with tempfile.TemporaryDirectory() as tmp:
         saida = os.path.join(tmp, "video.mp4")
+        duracao, audio_path = DURACAO, None
+        if voz:
+            audio = falar(texto_narracao(oferta, gancho, desconto), voz, velocidade, tom)
+            if audio:
+                audio_path = os.path.join(tmp, "voz.mp3")
+                with open(audio_path, "wb") as f:
+                    f.write(audio)
+                duracao = max(DURACAO, min(25.0, _duracao_audio(audio_path) + 1.0))
+        if info is not None:
+            info["voz"] = bool(audio_path)
+        t_fim = duracao - 3.0  # tela final nos últimos 3 segundos
+        if audio_path:
+            entrada_audio = ["-i", audio_path]
+            filtro = ["-filter_complex", f"[1:a]adelay=300|300,apad,atrim=0:{duracao}[a]", "-map", "0:v", "-map", "[a]"]
+        else:
+            entrada_audio = ["-f", "lavfi", "-t", str(duracao), "-i", "anullsrc=r=44100:cl=stereo"]
+            filtro = ["-map", "0:v", "-map", "1:a"]
         cmd = ["ffmpeg", "-y", "-loglevel", "error",
                "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{L}x{A}", "-r", str(FPS), "-i", "-",
-               "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-               "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", saida]
+               *entrada_audio, *filtro, "-t", str(duracao),
+               "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", saida]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         try:
-            for n in range(int(DURACAO * FPS)):
+            for n in range(int(duracao * FPS)):
                 t = n / FPS
                 quadro = base.copy()
                 if foto is not None:  # zoom lento (Ken Burns)
-                    z = 1.0 + 0.10 * (t / DURACAO)
+                    z = 1.0 + 0.10 * (t / duracao)
                     fw, fh = int(foto.width * z), int(foto.height * z)
                     f = foto.resize((fw, fh), Image.BILINEAR)
                     quadro.paste(f, (cx - fw // 2, cy - fh // 2), f)
-                _misturar(quadro, c_de, _janela(t, 3.0, 12, 0.4, 0.01), dy=(1 - _ease((t - 3.0) / 0.4)) * 30)
+                _misturar(quadro, c_de, _janela(t, 3.0, 99, 0.4, 0.01), dy=(1 - _ease((t - 3.0) / 0.4)) * 30)
                 p = _ease((t - 4.0) / 0.35)
-                _misturar(quadro, c_por, _janela(t, 4.0, 12, 0.25, 0.01), escala=0.9 + 0.1 * p if p < 1 else 1.0)
-                _misturar(quadro, c_selo, _janela(t, 5.2, 12, 0.3, 0.01), dy=(1 - _ease((t - 5.2) / 0.3)) * -40)
+                _misturar(quadro, c_por, _janela(t, 4.0, 99, 0.25, 0.01), escala=0.9 + 0.1 * p if p < 1 else 1.0)
+                _misturar(quadro, c_selo, _janela(t, 5.2, 99, 0.3, 0.01), dy=(1 - _ease((t - 5.2) / 0.3)) * -40)
                 _misturar(quadro, t_gancho, 1.0 if t < 2.0 else _janela(t, 0, 2.4, 0.01, 0.4))
-                _misturar(quadro, t_final, _janela(t, 9.0, 99, 0.4, 0.01))
+                _misturar(quadro, t_final, _janela(t, t_fim, 99, 0.4, 0.01))
                 proc.stdin.write(quadro.convert("RGB").tobytes())
         finally:
             proc.stdin.close()

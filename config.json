@@ -74,6 +74,9 @@
    15,
    20
   ],
-  "por_vez": 1
+  "por_vez": 1,
+  "voz": "pt-BR-FranciscaNeural",
+  "voz_velocidade": "+15%",
+  "voz_tom": "+70Hz"
  }
 }
