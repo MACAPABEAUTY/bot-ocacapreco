@@ -25,6 +25,32 @@
   "quando": 1792245330.4569535,
   "tipo": "PRODUCT"
  },
+ "MLB22871761": {
+  "categoria": "Eletrodomésticos",
+  "de": 299.0,
+  "desconto": 58,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_842831-MLA99963285219_112025-F.jpg",
+  "id": "MLB22871761",
+  "item_id": "MLB6926098514",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB22871761",
+  "nome": "Escova Rotativa Mondial Ceramica Tourmaline Ion 3x1 Erb-01 Rosa 127/220v",
+  "por": 125.0,
+  "quando": 1792258287.241112,
+  "tipo": "PRODUCT"
+ },
+ "MLB24028629": {
+  "categoria": "Eletrônicos, Áudio e Vídeo",
+  "de": 299.0,
+  "desconto": 51,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_730568-MLA99983575997_112025-F.jpg",
+  "id": "MLB24028629",
+  "item_id": "MLB5410852112",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB24028629",
+  "nome": "Fone De Ouvido Soundcore by Anker P20i Graves Poderosos e Impactantes Bluetooth 5.3 30H de Reprodução Resistência à Água 2 Mics IA para Chamadas Claras Personalização de Som via App Cor Preto",
+  "por": 146.0,
+  "quando": 1792258287.241112,
+  "tipo": "PRODUCT"
+ },
  "MLB32043715": {
   "categoria": "Casa, Móveis e Decoração",
   "de": 115.9,
@@ -38,6 +64,19 @@
   "quando": 1792245330.4569535,
   "tipo": "PRODUCT"
  },
+ "MLB47106610": {
+  "categoria": "Celulares e Telefones",
+  "de": 2800.0,
+  "desconto": 41,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_697102-MLA99477666220_112025-F.jpg",
+  "id": "MLB47106610",
+  "item_id": "MLB5295500901",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB47106610",
+  "nome": "Smartphone Samsung Galaxy A36 5G 256GB 8GB Super Amoled 6.7'' Câmera Tripla 50MP Selfie 12MP 5000 mAh Ip67 NFC Dual Sim Recursos IA - Branco",
+  "por": 1649.9,
+  "quando": 1792258287.241112,
+  "tipo": "PRODUCT"
+ },
  "MLB47889235": {
   "categoria": "Celulares e Telefones",
   "de": 78.9,
@@ -49,6 +88,19 @@
   "nome": "Carregador Super Rápido 25w Para Samsung Galaxy S24 S23 S22 S21 S20 Fe Ultra Motorola M22 M31 M32 M62 M63 M64 G15 Xiaomi Redmi Note 12 13 14 15 LG - Super Fast Cabo Blindado Tipo Usb C -Dtimp",
   "por": 29.0,
   "quando": 1792245330.4569535,
+  "tipo": "PRODUCT"
+ },
+ "MLB52363091": {
+  "categoria": "Beleza e Cuidado Pessoal",
+  "de": 116.9,
+  "desconto": 40,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_861957-MLA108178234350_032026-F.jpg",
+  "id": "MLB52363091",
+  "item_id": "MLB4239462089",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB52363091",
+  "nome": "Escova Progressiva 150g - Fashion Gold",
+  "por": 69.9,
+  "quando": 1792258287.241112,
   "tipo": "PRODUCT"
  },
  "MLB53222689": {
@@ -75,6 +127,19 @@
   "nome": "Proteína Max Titanium Whey Pro Concetrado em pó sabor Morango x 1kg",
   "por": 75.0,
   "quando": 1792245330.4569535,
+  "tipo": "PRODUCT"
+ },
+ "MLB65541449": {
+  "categoria": "Eletrônicos, Áudio e Vídeo",
+  "de": 619.0,
+  "desconto": 69,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_608030-MLA106478715282_022026-F.jpg",
+  "id": "MLB65541449",
+  "item_id": "MLB6922339234",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB65541449",
+  "nome": "Fone de Ouvido JBL Tune 530BT Bluetooth Sem Fio Preto Headphone com Microfone Wireless Estéreo Graves Potentes Confortável",
+  "por": 193.03,
+  "quando": 1792258287.241112,
   "tipo": "PRODUCT"
  }
 }
