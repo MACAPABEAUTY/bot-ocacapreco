@@ -1,0 +1,56 @@
+name: Bot O Caça Preço
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"      # lê suas mensagens a cada ~10 minutos
+    - cron: "40 14,21 * * *"    # busca ofertas às 11:40 e 18:40 (horário de Brasília/Fortaleza)
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "mensagens = só ler o Telegram · buscar = procurar ofertas agora"
+        default: mensagens
+        type: choice
+        options: [mensagens, buscar]
+
+permissions:
+  contents: write   # para guardar o estado do bot (pasta state/)
+
+concurrency:
+  group: bot-ocacapreco
+  cancel-in-progress: false
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar o bot
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          OWNER_ID: ${{ secrets.OWNER_ID }}
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          MODO: ${{ github.event.schedule == '40 14,21 * * *' && 'buscar' || inputs.modo || 'mensagens' }}
+        run: python bot.py
+
+      - name: Guardar estado
+        if: always()
+        run: |
+          git config user.name "ocacapreco-bot"
+          git config user.email "ocacapreco-bot@users.noreply.github.com"
+          git add state
+          if ! git diff --cached --quiet; then
+            git commit -m "Atualiza estado do bot"
+            git pull --rebase
+            git push
+          fi

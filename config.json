@@ -1,0 +1,15 @@
+{
+  "canal": "@ocacapreco",
+  "redirect_uri": "https://github.com/MACAPABEAUTY/bot-ocacapreco",
+  "desconto_minimo": 20,
+  "max_sugestoes_por_busca": 6,
+  "produtos_por_categoria": 15,
+  "categorias": {
+    "MLB1246": "Beleza e Cuidado Pessoal",
+    "MLB1574": "Casa, Móveis e Decoração",
+    "MLB5726": "Eletrodomésticos",
+    "MLB1000": "Eletrônicos, Áudio e Vídeo",
+    "MLB1051": "Celulares e Telefones",
+    "MLB1276": "Esportes e Fitness"
+  }
+}

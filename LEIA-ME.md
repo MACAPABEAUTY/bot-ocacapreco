@@ -1,52 +1,35 @@
-# Bot do O Caça Preço 🎯
+# Bot do O Caça Preço 🎯 · versão 2
 
-Você manda a oferta no privado do bot, ele monta o post e publica no canal **@ocacapreco**.
-Roda de graça no GitHub, sem precisar deixar computador ligado.
+## O que ele faz
+- **11:40 e 18:40** procura ofertas nos mais vendidos das categorias do `config.json` (desconto mínimo de 20%) e te manda as sugestões no privado.
+- Você toca em **Abrir produto › Compartilhar › Copiar link** e **responde a sugestão** colando o link. Ele publica no canal **@ocacapreco** com foto, preço "de/por" e o seu link.
+- Para cada oferta publicada, te manda o **story**, o **post do feed** e a **legenda do Instagram** prontos.
+- Continua aceitando oferta manual (nome, preços e link em linhas separadas, com ou sem foto).
 
-## Passo 1 – Criar o bot no Telegram
-1. No Telegram, abra o **@BotFather** e mande `/newbot`.
-2. Nome: `O Caça Preço Bot`. Usuário: algo terminando em `bot`, por ex. `ocacapreco_bot`.
-3. O BotFather te dá um **token** (parece `123456:ABC-xyz...`). Guarde e **não mostre para ninguém**.
+## Atualizar o repositório (quem já tem a versão 1)
+1. No repositório, clique em **Add file › Upload files** e arraste: `bot.py`, `ml.py`, `arte.py`, `config.json`, `requirements.txt` e as **pastas** `fonts` e `state`. Clique em **Commit changes**.
+2. Abra `.github/workflows/bot.yml`, clique no lápis ✏️, apague tudo, cole o conteúdo do novo `bot.yml` e faça **Commit changes**.
+3. **Settings › Actions › General › Workflow permissions**: marque **Read and write permissions** e salve.
+4. **Settings › Secrets and variables › Actions**: crie `ML_CLIENT_ID` e `ML_CLIENT_SECRET` com os dados do aplicativo do Mercado Livre.
 
-## Passo 2 – Colocar o bot no canal
-1. Abra o canal **@ocacapreco** › Administradores › Adicionar administrador.
-2. Procure o seu bot e dê a permissão **Publicar mensagens**.
+## Conectar a conta do Mercado Livre (uma vez só)
+1. Mande `/conectar` para o bot e rode o workflow (**Actions › Run workflow**).
+2. Abra o link que ele mandar e clique em **Permitir**.
+3. Você cai numa página do GitHub. Copie o **endereço inteiro** da barra (tem `code=TG-...`) e mande para o bot.
+4. **Rode o workflow de novo na hora** (o código vale só 10 minutos). O bot avisa que conectou e já faz a primeira busca.
 
-## Passo 3 – Subir os arquivos no GitHub
-1. Crie uma conta grátis em github.com.
-2. Clique em **New repository**, nome `bot-ocacapreco`, marque **Public** e crie.
-   (Público é o que deixa rodar de graça sem limite. O token fica guardado como segredo, ninguém vê.)
-3. Clique em **uploading an existing file** e arraste o `bot.py`, o `LEIA-ME.md` **e a pasta `.github`** inteira. Clique em **Commit changes**.
-   - Se a pasta `.github` não aparecer no seu computador (ela fica oculta), crie pelo site: **Add file › Create new file**, digite o nome `.github/workflows/bot.yml` e cole o conteúdo do arquivo `bot.yml`.
+## Comandos
+- `/buscar` busca ofertas na próxima execução (para ser na hora: Run workflow com modo **buscar**)
+- `/status` mostra se está conectado e as categorias
+- `/diagnostico` testa a conexão com o Mercado Livre passo a passo
+- `/modelo` mostra os jeitos de mandar oferta
 
-## Passo 4 – Guardar o token como segredo
-1. No repositório: **Settings › Secrets and variables › Actions › New repository secret**.
-2. Nome `TELEGRAM_TOKEN`, valor = o token do BotFather. Salve.
+## Ajustes no config.json
+- `desconto_minimo`: % OFF mínimo para sugerir
+- `max_sugestoes_por_busca`: quantas sugestões por busca
+- `categorias`: código e nome de cada categoria do Mercado Livre
 
-## Passo 5 – Descobrir seu ID
-1. No Telegram, abra o seu bot e mande `/start`.
-2. No GitHub, vá em **Actions › Bot O Caça Preço › Run workflow**.
-3. Em até 1 minuto o bot te responde com **seu ID** (um número).
-4. Crie outro segredo: nome `OWNER_ID`, valor = esse número.
-
-Pronto! Só você consegue publicar pelo bot.
-
-## Como usar no dia a dia
-Mande no privado do bot (uma informação por linha):
-
-```
-Fone Bluetooth JBL Tune 520
-199,90
-129,90
-Frete grátis Full
-https://meli.la/SEU-LINK
-```
-
-- 1ª linha = nome · números = preços (o maior vira o "De") · link = seu link de afiliado · outras linhas = vantagens
-- Pode mandar uma **foto** (print do produto) com esse texto na legenda.
-- Comece com **teste** para ver a prévia sem publicar.
-- O bot confere as mensagens a cada ~10 minutos (o GitHub às vezes atrasa um pouco). Para publicar na hora: **Actions › Run workflow**.
-
-## Bom saber
-- Se o repositório ficar 60 dias sem nenhuma alteração, o GitHub pausa o agendamento e manda um e-mail. É só entrar em Actions e clicar para reativar.
-- Para mudar o rodapé ou a hashtag, edite as linhas `RODAPE` e `HASHTAG` no começo do `bot.py`.
+## Segurança
+- O token do Mercado Livre fica em `state/ml_token.enc`, **criptografado** com o seu `ML_CLIENT_SECRET`. Quem olhar o repositório não consegue usar.
+- Se trocar o Client Secret no Mercado Livre, atualize o segredo no GitHub e mande `/conectar` de novo.
+- Fonte Bricolage Grotesque: licença SIL OFL (`fonts/OFL.txt`).
