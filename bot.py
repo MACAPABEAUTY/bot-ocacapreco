@@ -61,8 +61,9 @@ MODELO = (
     "https://meli.la/SEU-LINK\n\n"
     "• pode mandar com FOTO (texto na legenda)\n"
     "• comece com \"teste\" para ver só a prévia\n\n"
-    "Comandos: /rodada /buscar /status /conectar /diagnostico /instagram"
+    "Comandos: /rodada /buscar /canalig /status /conectar /diagnostico /instagram"
 )
+MARCA_IG = "📲 CANAL DO INSTAGRAM"
 
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 PRECO_RE = re.compile(r"^(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?$", re.IGNORECASE)
@@ -489,12 +490,115 @@ def rodada_automatica():
             time.sleep(cfg.get("intervalo_segundos", 20))
 
     salvar_json("ultima_rodada.json", {"marca": marca})
+    if escolhidos:  # guarda os melhores da rodada para o pacote do canal do Instagram
+        salvar_json("destaques.json", {"quando": time.time(), "itens": escolhidos[:10]})
+    try:
+        pacote_canal_ig_agendado(agora_l)
+    except Exception as e:
+        print("Pacote do canal IG falhou:", e)
     meta = cfg.get("meta", 5000)
     if cfg.get("avisar_cada_rodada", True):
         enviar(OWNER_ID, f"🤖 Rodada das {agora_l:%H:%M}: {feitos} oferta(s) publicada(s) no canal"
                          + (" (1 também no Instagram)" if post_ig and feitos else "")
                          + f"\n📦 Total: {len(publicados)} / {meta}"
                          + ("" if feitos else f"\nNenhum produto novo com {minimo}% OFF nas categorias desta hora."))
+
+
+# ================================================================ Canal de transmissão do Instagram
+def texto_canal_ig(d, link):
+    linhas = [f"🔥 {d['nome']}", ""]
+    if d.get("de") and d["de"] > d["por"]:
+        desconto = round((1 - d["por"] / d["de"]) * 100)
+        linhas.append(f"De {reais(d['de'])} por {reais(d['por'])} ({desconto}% OFF)")
+    else:
+        linhas.append(f"Por {reais(d['por'])}")
+    linhas += ["", f"👉 {link}", "", RODAPE]
+    return "\n".join(linhas)
+
+
+def enviar_pacote_canal_ig(chat_id, itens):
+    """Manda para o dono as melhores ofertas, prontas para o canal de transmissão do Instagram."""
+    if not itens:
+        enviar(chat_id, "📲 Ainda não tenho ofertas recentes para o canal do Instagram. Mande /rodada e depois /canalig.")
+        return 0
+    guardados = ler_json("pacote_ig.json", {})
+    agora = time.time()
+    guardados = {k: v for k, v in guardados.items() if agora - v.get("quando", 0) < 7 * 86400}
+    enviar(chat_id, f"{MARCA_IG} · <b>{len(itens)} oferta(s) de hoje</b>\n\n"
+                    "Para cada uma:\n"
+                    "1️⃣ <b>Abrir produto</b> › <b>Compartilhar</b> › copiar o link (meli.la)\n"
+                    "2️⃣ <b>Responda a mensagem</b> da oferta colando o link\n"
+                    "3️⃣ Eu devolvo a foto + o texto pronto. Salve a foto, toque no texto para copiar "
+                    "e mande no canal do Instagram 📲")
+    for d in itens:
+        legenda = (f"{MARCA_IG}\n\n<b>{html.escape(d['nome'])}</b>\n"
+                   + (f"<s>{reais(d['de'])}</s> → " if d.get("de") else "")
+                   + f"<b>{reais(d['por'])}</b>"
+                   + (f"  ({d['desconto']}% OFF)" if d.get("desconto") else "")
+                   + "\n\n↩️ Responda esta mensagem com o link meli.la\n\n"
+                   f"🆔 {d['id']}")
+        teclado = {"inline_keyboard": [[{"text": "🔗 Abrir produto", "url": d["link_produto"]}]]} if d.get("link_produto") else None
+        try:
+            if not d.get("foto"):
+                raise RuntimeError("sem foto")
+            api("sendPhoto", chat_id=chat_id, photo=d["foto"], caption=legenda, parse_mode="HTML", reply_markup=teclado)
+        except RuntimeError:
+            enviar(chat_id, legenda, reply_markup=teclado)
+        guardados[d["id"]] = {k: d.get(k) for k in ("id", "nome", "por", "de", "foto", "link_produto", "tipo")}
+        guardados[d["id"]]["quando"] = agora
+    salvar_json("pacote_ig.json", guardados)
+    return len(itens)
+
+
+def melhores_para_canal_ig(qtd):
+    dados = ler_json("destaques.json", {})
+    if time.time() - dados.get("quando", 0) > 2 * 86400:
+        return []
+    ja = ler_json("pacote_ig.json", {})
+    itens = [d for d in dados.get("itens", []) if d.get("id") not in ja]
+    itens.sort(key=lambda d: d.get("desconto", 0), reverse=True)
+    return itens[:qtd]
+
+
+def pacote_canal_ig_agendado(agora_l):
+    cfg = CFG.get("canal_ig", {})
+    if not cfg.get("ativo") or not OWNER_ID:
+        return
+    horas = sorted(cfg.get("horas", [12, 19]))
+    hoje = agora_l.strftime("%Y-%m-%d")
+    feitos = ler_json("canal_ig_dia.json", {}).get(hoje, [])
+    vencidas = [h for h in horas if h <= agora_l.hour]
+    if not vencidas or vencidas[-1] in feitos:  # se o GitHub pular um horário, manda na rodada seguinte
+        return
+    if enviar_pacote_canal_ig(OWNER_ID, melhores_para_canal_ig(cfg.get("ofertas", 3))):
+        salvar_json("canal_ig_dia.json", {hoje: sorted(set(feitos + vencidas))})
+
+
+def responder_pacote_ig(chat_id, msg, id_):
+    link, _ = separar_link(msg.get("text") or msg.get("caption") or "")
+    if not link:
+        enviar(chat_id, "❌ Responda a oferta colando o link de afiliado (meli.la/...).")
+        return
+    d = ler_json("pacote_ig.json", {}).get(id_)
+    if not d:
+        enviar(chat_id, "❌ Não achei os dados dessa oferta (ela tem mais de 7 dias). Mande /canalig para receber novas.")
+        return
+    try:  # confere o preço de agora
+        novo = ml.detalhes(id_, d.get("tipo") or "PRODUCT")
+        if novo:
+            d = {**d, **{k: novo.get(k) for k in ("nome", "por", "de") if novo.get(k)}}
+    except Exception as e:
+        print("Não atualizei o preço:", e)
+    aviso = "" if re.search(r"meli\.la|mercadoli[vb]re", link, re.I) else \
+        "\n⚠️ Esse link não parece ser do Mercado Livre. Confira antes de mandar."
+    texto = texto_canal_ig(d, link)
+    if d.get("foto"):
+        try:
+            api("sendPhoto", chat_id=chat_id, photo=d["foto"], caption="📲 Foto para o canal (segure › Salvar)")
+        except RuntimeError as e:
+            print("Foto falhou:", e)
+    enviar(chat_id, "✅ <b>Pronto para o canal do Instagram</b> — toque no texto para copiar:\n\n<code>"
+           + html.escape(texto) + "</code>" + aviso)
 
 
 # ================================================================ Comente QUERO
@@ -607,6 +711,9 @@ def tratar(msg, pedidos):
         pedidos["buscar"] = True
         enviar(chat_id, "🔎 Buscando ofertas agora…")
         return
+    if cmd == "/canalig":
+        enviar_pacote_canal_ig(chat_id, melhores_para_canal_ig(CFG.get("canal_ig", {}).get("ofertas", 3)))
+        return
 
     codigo = CODIGO_RE.search(texto)
     if codigo and ("code=" in texto or texto.startswith("TG-")):
@@ -619,7 +726,11 @@ def tratar(msg, pedidos):
         return
 
     resposta = msg.get("reply_to_message") or {}
-    id_sug = ID_RE.search(resposta.get("caption") or resposta.get("text") or "")
+    texto_resp = resposta.get("caption") or resposta.get("text") or ""
+    id_sug = ID_RE.search(texto_resp)
+    if id_sug and MARCA_IG in texto_resp:
+        responder_pacote_ig(chat_id, msg, id_sug.group(1))
+        return
     if id_sug:
         publicar_sugestao(chat_id, msg, id_sug.group(1))
         return
