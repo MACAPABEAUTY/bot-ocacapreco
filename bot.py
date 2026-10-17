@@ -424,6 +424,14 @@ def rodada_automatica():
     if not ml.conectado():
         enviar(OWNER_ID, "⚠️ Modo automático parado: conecte o Mercado Livre com /conectar.")
         return
+    try:
+        ml.token()  # confere a conexão antes de começar
+    except ml.ErroML as e:
+        aviso = ler_json("aviso_conexao.json", {})
+        if time.time() - aviso.get("quando", 0) > 3 * 3600:
+            enviar(OWNER_ID, "⚠️ <b>Modo automático parado</b>\n" + html.escape(str(e)))
+            salvar_json("aviso_conexao.json", {"quando": time.time()})
+        return
 
     publicados = ler_json("publicados.json", {})
     marca = agora_l.strftime("%Y-%m-%d %H")
