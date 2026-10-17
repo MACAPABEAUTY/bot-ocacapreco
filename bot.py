@@ -32,6 +32,7 @@ sys.path.insert(0, AQUI)
 import arte  # noqa: E402
 import ml    # noqa: E402
 import instagram  # noqa: E402
+import video  # noqa: E402
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
 OWNER_ID = os.environ.get("OWNER_ID", "").strip()
@@ -61,7 +62,7 @@ MODELO = (
     "https://meli.la/SEU-LINK\n\n"
     "• pode mandar com FOTO (texto na legenda)\n"
     "• comece com \"teste\" para ver só a prévia\n\n"
-    "Comandos: /rodada /buscar /canalig /status /conectar /diagnostico /instagram"
+    "Comandos: /rodada /buscar /canalig /video /status /conectar /diagnostico /instagram"
 )
 MARCA_IG = "📲 CANAL DO INSTAGRAM"
 
@@ -496,6 +497,10 @@ def rodada_automatica():
         pacote_canal_ig_agendado(agora_l)
     except Exception as e:
         print("Pacote do canal IG falhou:", e)
+    try:
+        videos_agendados(agora_l)
+    except Exception as e:
+        print("Vídeo falhou:", e)
     meta = cfg.get("meta", 5000)
     if cfg.get("avisar_cada_rodada", True):
         enviar(OWNER_ID, f"🤖 Rodada das {agora_l:%H:%M}: {feitos} oferta(s) publicada(s) no canal"
@@ -599,6 +604,52 @@ def responder_pacote_ig(chat_id, msg, id_):
             print("Foto falhou:", e)
     enviar(chat_id, "✅ <b>Pronto para o canal do Instagram</b> — toque no texto para copiar:\n\n<code>"
            + html.escape(texto) + "</code>" + aviso)
+
+
+# ================================================================ Vídeos para TikTok / Reels
+def enviar_videos(chat_id, qtd=1):
+    dados = ler_json("destaques.json", {})
+    usados = ler_json("videos.json", {})
+    agora = time.time()
+    usados = {k: v for k, v in usados.items() if agora - v < 30 * 86400}
+    itens = [d for d in dados.get("itens", []) if d.get("id") not in usados and d.get("foto")]
+    itens.sort(key=lambda d: d.get("desconto", 0), reverse=True)
+    if not itens:
+        enviar(chat_id, "🎬 Ainda não tenho ofertas novas para vídeo. Mande /rodada e depois /video.")
+        return 0
+    feitos = 0
+    for d in itens[:qtd]:
+        oferta = {"nome": d["nome"], "por": d["por"], "de": d.get("de"), "desconto": d.get("desconto")}
+        try:
+            mp4 = video.gerar(oferta, baixar(d["foto"]), telegram=TELEGRAM_LINK)
+        except Exception as e:
+            print("Vídeo falhou", d.get("id"), e)
+            continue
+        legenda = video.legenda_tiktok(oferta)
+        api("sendVideo", arquivos={"video": ("ocacapreco_video.mp4", mp4)}, chat_id=chat_id,
+            supports_streaming="true", width=1080, height=1920,
+            caption=("🎬 <b>Vídeo para TikTok / Reels</b>\n"
+                     "Salve o vídeo, poste e escolha um <b>som em alta</b> no app.\n\n"
+                     "Legenda (toque para copiar):\n<code>" + html.escape(legenda) + "</code>")[:1024],
+            parse_mode="HTML")
+        usados[d["id"]] = agora
+        feitos += 1
+    salvar_json("videos.json", usados)
+    return feitos
+
+
+def videos_agendados(agora_l):
+    cfg = CFG.get("video", {})
+    if not cfg.get("ativo") or not OWNER_ID:
+        return
+    horas = sorted(cfg.get("horas", [11, 15, 20]))
+    hoje = agora_l.strftime("%Y-%m-%d")
+    feitos = ler_json("video_dia.json", {}).get(hoje, [])
+    vencidas = [h for h in horas if h <= agora_l.hour]
+    if not vencidas or vencidas[-1] in feitos:
+        return
+    if enviar_videos(OWNER_ID, cfg.get("por_vez", 1)):
+        salvar_json("video_dia.json", {hoje: sorted(set(feitos + vencidas))})
 
 
 # ================================================================ Comente QUERO
@@ -710,6 +761,10 @@ def tratar(msg, pedidos):
     if cmd == "/buscar":
         pedidos["buscar"] = True
         enviar(chat_id, "🔎 Buscando ofertas agora…")
+        return
+    if cmd == "/video":
+        enviar(chat_id, "🎬 Gerando o vídeo… (leva uns 30 segundos)")
+        enviar_videos(chat_id, 1)
         return
     if cmd == "/canalig":
         enviar_pacote_canal_ig(chat_id, melhores_para_canal_ig(CFG.get("canal_ig", {}).get("ofertas", 3)))

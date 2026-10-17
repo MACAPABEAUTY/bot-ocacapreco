@@ -66,5 +66,14 @@
    19
   ],
   "ofertas": 3
+ },
+ "video": {
+  "ativo": true,
+  "horas": [
+   11,
+   15,
+   20
+  ],
+  "por_vez": 1
  }
 }
