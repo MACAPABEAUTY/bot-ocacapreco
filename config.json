@@ -75,8 +75,11 @@
    20
   ],
   "por_vez": 1,
-  "voz": "pt-BR-FranciscaNeural",
-  "voz_velocidade": "+15%",
-  "voz_tom": "+70Hz"
+  "voz": [
+   "pt-BR-ThalitaMultilingualNeural",
+   "pt-BR-FranciscaNeural"
+  ],
+  "voz_velocidade": "+5%",
+  "voz_tom": "+0Hz"
  }
 }

@@ -183,16 +183,22 @@ def falar(texto, voz, velocidade="+8%", tom="+0Hz"):
         import asyncio
         import edge_tts
 
-        async def _rodar():
-            com = edge_tts.Communicate(texto, voz, rate=velocidade, pitch=tom)
+        async def _rodar(nome_voz):
+            com = edge_tts.Communicate(texto, nome_voz, rate=velocidade, pitch=tom)
             dados = b""
             async for parte in com.stream():
                 if parte["type"] == "audio":
                     dados += parte["data"]
             return dados
 
-        audio = asyncio.run(asyncio.wait_for(_rodar(), timeout=60))
-        return audio or None
+        for nome_voz in ([voz] if isinstance(voz, str) else list(voz)):  # tenta a próxima se uma falhar
+            try:
+                audio = asyncio.run(asyncio.wait_for(_rodar(nome_voz), timeout=60))
+                if audio:
+                    return audio
+            except Exception as e:
+                print("Voz", nome_voz, "falhou:", e)
+        return None
     except Exception as e:
         print("Narração falhou:", e)
         return None
