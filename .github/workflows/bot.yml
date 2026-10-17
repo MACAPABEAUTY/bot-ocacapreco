@@ -10,7 +10,7 @@ on:
         description: "mensagens = só ler o Telegram · buscar = procurar ofertas agora"
         default: mensagens
         type: choice
-        options: [mensagens, auto, buscar]
+        options: [mensagens, auto, buscar, video]
 
 permissions:
   contents: write   # para guardar o estado do bot (pasta state/)
