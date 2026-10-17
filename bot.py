@@ -249,6 +249,13 @@ def enviar_artes(chat_id, oferta, foto_bytes):
                 linhas.append("✅ Story publicado (lembre de adicionar a figurinha de link pelo app, se quiser)")
             except Exception as e:
                 linhas.append(f"❌ Story: {html.escape(str(e))}")
+        if not cfg_ig.get("story"):
+            linhas.append(
+                "\n📱 <b>Story com link clicável</b> (20 segundos):\n"
+                "1️⃣ Salve a imagem <b>Story</b> acima\n"
+                "2️⃣ Instagram › novo story › escolha a imagem\n"
+                "3️⃣ Figurinha <b>Link</b> › cole o link abaixo › texto: ENTRA NO CANAL 🔥\n\n"
+                f"<code>https://{TELEGRAM_LINK}</code>")
         enviar(chat_id, "\n".join(linhas))
     else:
         enviar(chat_id, "📝 <b>Legenda para o Instagram</b> (toque para copiar):\n\n<code>"

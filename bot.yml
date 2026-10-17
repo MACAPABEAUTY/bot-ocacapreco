@@ -40,8 +40,6 @@ jobs:
           OWNER_ID: ${{ secrets.OWNER_ID }}
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
-          IG_TOKEN: ${{ secrets.IG_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODO: ${{ github.event.schedule == '40 14,21 * * *' && 'buscar' || inputs.modo || 'mensagens' }}
         run: python bot.py
 
