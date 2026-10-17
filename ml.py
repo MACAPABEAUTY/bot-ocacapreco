@@ -150,6 +150,20 @@ def _preco_item(item_id):
     return None, None
 
 
+def _melhor_anuncio(product_id):
+    """Para produtos de catálogo: pega o anúncio mais barato entre os que vendem esse produto.
+    Retorna (item_id, preço, preço antigo)."""
+    st, resp = get(f"/products/{product_id}/items")
+    if st != 200 or not isinstance(resp, dict):
+        return None, None, None
+    anuncios = [a for a in (resp.get("results") or []) if a.get("item_id") and a.get("price")]
+    if not anuncios:
+        return None, None, None
+    a = min(anuncios, key=lambda x: float(x["price"]))
+    de = a.get("original_price")
+    return a["item_id"], float(a["price"]), (float(de) if de else None)
+
+
 def detalhes(id_, tipo="ITEM"):
     """Junta nome, foto, link e preços de um produto (catálogo) ou anúncio."""
     info = {"id": id_, "tipo": tipo}
@@ -162,10 +176,15 @@ def detalhes(id_, tipo="ITEM"):
         info["link_produto"] = p.get("permalink") or f"https://www.mercadolivre.com.br/p/{id_}"
         bbw = p.get("buy_box_winner") or {}
         item_id = bbw.get("item_id")
+        por = de = None
+        if not item_id:
+            item_id, por, de = _melhor_anuncio(id_)
         if not item_id:
             return None
         info["item_id"] = item_id
-        por, de = _preco_item(item_id)
+        p_sp, d_sp = _preco_item(item_id)
+        if p_sp is not None:
+            por, de = p_sp, (d_sp or de)
         if por is None and bbw.get("price"):
             por, de = float(bbw["price"]), (float(bbw["original_price"]) if bbw.get("original_price") else None)
     else:
@@ -215,6 +234,12 @@ def diagnostico(categoria):
             linhas.append(f"   /products: {s} {('· ' + str(p.get('name'))[:40]) if s == 200 else str(p)[:120]}")
             item_id = ((p or {}).get("buy_box_winner") or {}).get("item_id") if s == 200 else None
             linhas.append(f"   buy_box_winner: {item_id or 'nenhum'}")
+            if not item_id:
+                s2, r2 = get(f"/products/{id_}/items")
+                qtd = len(r2.get("results") or []) if s2 == 200 and isinstance(r2, dict) else 0
+                linhas.append(f"   /products/items: {s2} · {qtd} anúncios" + ("" if s2 == 200 else f" {str(r2)[:120]}"))
+                item_id, _, _ = _melhor_anuncio(id_)
+                linhas.append(f"   anúncio escolhido: {item_id or 'nenhum'}")
         else:
             item_id = id_
         if item_id:
