@@ -3,14 +3,14 @@ name: Bot O Caça Preço
 on:
   schedule:
     - cron: "*/10 * * * *"      # lê suas mensagens a cada ~10 minutos
-    - cron: "40 14,21 * * *"    # busca ofertas às 11:40 e 18:40 (horário de Brasília/Fortaleza)
+    - cron: "7 * * * *"         # modo automático: até 10 ofertas por hora (o bot só publica das 8h às 23h)
   workflow_dispatch:
     inputs:
       modo:
         description: "mensagens = só ler o Telegram · buscar = procurar ofertas agora"
         default: mensagens
         type: choice
-        options: [mensagens, buscar]
+        options: [mensagens, auto, buscar]
 
 permissions:
   contents: write   # para guardar o estado do bot (pasta state/)
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   rodar:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +42,7 @@ jobs:
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MODO: ${{ github.event.schedule == '40 14,21 * * *' && 'buscar' || inputs.modo || 'mensagens' }}
+          MODO: ${{ github.event.schedule == '7 * * * *' && 'auto' || inputs.modo || 'mensagens' }}
         run: python bot.py
 
       - name: Guardar estado
