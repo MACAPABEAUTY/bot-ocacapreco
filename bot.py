@@ -832,6 +832,12 @@ def main():
         except Exception as e:
             print("Erro nos comentários:", e)
 
+    if MODO == "video" and OWNER_ID:
+        try:
+            enviar_videos(OWNER_ID, 1)
+        except Exception as e:
+            enviar(OWNER_ID, f"❌ Erro no vídeo: {html.escape(str(e))}")
+
     if (MODO == "auto" or pedidos.get("auto")) and OWNER_ID:
         try:
             rodada_automatica()
