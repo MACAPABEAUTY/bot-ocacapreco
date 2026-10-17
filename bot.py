@@ -258,6 +258,7 @@ def buscar(chat_id):
     minimo = CFG.get("desconto_minimo", 20)
     por_cat = CFG.get("produtos_por_categoria", 15)
     candidatos, erros = [], []
+    lidos, falhas, maior = 0, 0, 0
     for cat, nome_cat in CFG.get("categorias", {}).items():
         try:
             for id_, tipo in ml.mais_vendidos(cat, por_cat):
@@ -269,8 +270,13 @@ def buscar(chat_id):
                     raise
                 except Exception as e:
                     print("Produto ignorado", id_, e)
+                    d = None
+                if not d:
+                    falhas += 1
                     continue
-                if d and d["desconto"] >= minimo:
+                lidos += 1
+                maior = max(maior, d["desconto"])
+                if d["desconto"] >= minimo:
                     d["categoria"] = nome_cat
                     candidatos.append(d)
         except ml.ErroML as e:
@@ -308,8 +314,11 @@ def buscar(chat_id):
     salvar_json("sugestoes.json", sugestoes)
 
     resumo = f"🔎 Busca concluída: {len(escolhidos)} sugest{'ão' if len(escolhidos) == 1 else 'ões'}"
-    if not escolhidos:
-        resumo += f".\nNenhum mais vendido novo com {minimo}% OFF ou mais agora. Tento de novo mais tarde."
+    resumo += f"\n📊 Produtos lidos: {lidos} · sem dados: {falhas} · maior desconto: {maior}%"
+    if not escolhidos and lidos:
+        resumo += f"\nNenhum mais vendido novo com {minimo}% OFF ou mais agora. Tento de novo mais tarde."
+    if not lidos:
+        resumo += "\n⚠️ Não consegui ler nenhum produto. Mande /diagnostico para ver o motivo."
     if erros:
         resumo += "\n\n⚠️ " + "\n⚠️ ".join(html.escape(e) for e in erros[:3])
     enviar(chat_id, resumo)

@@ -205,11 +205,26 @@ def diagnostico(categoria):
     st, hl = get(f"/highlights/MLB/category/{categoria}")
     n = len(hl.get("content") or []) if isinstance(hl, dict) else 0
     linhas.append(f"{'✅' if st == 200 else '❌'} Mais vendidos ({categoria}): {st}, {n} produtos")
-    if st == 200 and n:
-        c = hl["content"][0]
-        d = detalhes(c["id"], c.get("type", "ITEM"))
-        if d:
-            linhas.append(f"✅ Produto: {d['nome'][:50]} · R$ {d['por']:.2f} · {d['desconto']}% OFF")
+    if st != 200:
+        linhas.append(f"   resposta: {str(hl)[:150]}")
+    for c in (hl.get("content") or [])[:3] if st == 200 else []:
+        id_, tipo = c["id"], c.get("type", "ITEM")
+        linhas.append(f"\n• {id_} ({tipo})")
+        if tipo == "PRODUCT":
+            s, p = get(f"/products/{id_}")
+            linhas.append(f"   /products: {s} {('· ' + str(p.get('name'))[:40]) if s == 200 else str(p)[:120]}")
+            item_id = ((p or {}).get("buy_box_winner") or {}).get("item_id") if s == 200 else None
+            linhas.append(f"   buy_box_winner: {item_id or 'nenhum'}")
         else:
-            linhas.append(f"❌ Não consegui ler o produto {c['id']} ({c.get('type')})")
+            item_id = id_
+        if item_id:
+            s, sp = get(f"/items/{item_id}/sale_price?context=channel_marketplace")
+            linhas.append(f"   sale_price: {s} {str(sp)[:120]}")
+            s, it = get(f"/items/{item_id}")
+            if s == 200:
+                linhas.append(f"   /items: 200 · preço {it.get('price')} · original {it.get('original_price')}")
+            else:
+                linhas.append(f"   /items: {s} {str(it)[:120]}")
+        d = detalhes(id_, tipo)
+        linhas.append(f"   ➜ {'OK · ' + str(d['desconto']) + '% OFF' if d else 'não consegui montar a oferta'}")
     return "\n".join(linhas)
