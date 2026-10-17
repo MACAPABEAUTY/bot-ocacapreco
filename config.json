@@ -1,6 +1,7 @@
 {
   "canal": "@ocacapreco",
   "redirect_uri": "https://github.com/MACAPABEAUTY/bot-ocacapreco",
+  "instagram": {"feed": true, "story": true},
   "desconto_minimo": 20,
   "max_sugestoes_por_busca": 6,
   "produtos_por_categoria": 15,
