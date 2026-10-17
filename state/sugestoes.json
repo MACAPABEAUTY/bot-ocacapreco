@@ -25,6 +25,19 @@
   "quando": 1792245330.4569535,
   "tipo": "PRODUCT"
  },
+ "MLB19721946": {
+  "categoria": "Joias e Relógios",
+  "de": 299.9,
+  "desconto": 71,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_633473-MLA115741902361_082026-F.jpg",
+  "id": "MLB19721946",
+  "item_id": "MLB5332948385",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB19721946",
+  "nome": "Relógio Casio Unissex Vintage Prata Aq-230a-1dmq",
+  "por": 86.97,
+  "quando": 1792273751.9142976,
+  "tipo": "PRODUCT"
+ },
  "MLB22871761": {
   "categoria": "Eletrodomésticos",
   "de": 299.0,
@@ -90,6 +103,19 @@
   "quando": 1792245330.4569535,
   "tipo": "PRODUCT"
  },
+ "MLB51652593": {
+  "categoria": "Brinquedos e Hobbies",
+  "de": 309.0,
+  "desconto": 74,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_845666-MLA99598112378_122025-F.jpg",
+  "id": "MLB51652593",
+  "item_id": "MLB5461309698",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB51652593",
+  "nome": "Caminhão Dinossauro Pista Com Carrinhos Maleta Transporte Cor Roxo",
+  "por": 78.9,
+  "quando": 1792273751.9142976,
+  "tipo": "PRODUCT"
+ },
  "MLB52363091": {
   "categoria": "Beleza e Cuidado Pessoal",
   "de": 116.9,
@@ -129,6 +155,19 @@
   "quando": 1792245330.4569535,
   "tipo": "PRODUCT"
  },
+ "MLB63152047": {
+  "categoria": "Brinquedos e Hobbies",
+  "de": 159.9,
+  "desconto": 64,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_702576-MLA110388417253_042026-F.jpg",
+  "id": "MLB63152047",
+  "item_id": "MLB6611494338",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB63152047",
+  "nome": "Patinete Infantil 3 Rodas Led Dobrável Luppy Azul Maxi Toys",
+  "por": 56.9,
+  "quando": 1792273751.9142976,
+  "tipo": "PRODUCT"
+ },
  "MLB65541449": {
   "categoria": "Eletrônicos, Áudio e Vídeo",
   "de": 619.0,
@@ -140,6 +179,45 @@
   "nome": "Fone de Ouvido JBL Tune 530BT Bluetooth Sem Fio Preto Headphone com Microfone Wireless Estéreo Graves Potentes Confortável",
   "por": 193.03,
   "quando": 1792258287.241112,
+  "tipo": "PRODUCT"
+ },
+ "MLB66806360": {
+  "categoria": "Construção",
+  "de": 94.9,
+  "desconto": 63,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_977560-MLA109029188291_032026-F.jpg",
+  "id": "MLB66806360",
+  "item_id": "MLB7805289664",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB66806360",
+  "nome": "Cabo Flexível 1,5 Mm² Illuminix Rolo Com 100 Metros 750v Preto",
+  "por": 34.82,
+  "quando": 1792273751.9142976,
+  "tipo": "PRODUCT"
+ },
+ "MLB66864521": {
+  "categoria": "Livros, Revistas e Comics",
+  "de": 78.5,
+  "desconto": 70,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_903022-MLA109894312615_032026-F.jpg",
+  "id": "MLB66864521",
+  "item_id": "MLB5393301301",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB66864521",
+  "nome": "Copa do Mundo da Fifa 2026™ Kit com 12 envelopes de figurinhas Fifa World Cup 2026™ - Panini - Capa Mole",
+  "por": 23.9,
+  "quando": 1792273751.9142976,
+  "tipo": "PRODUCT"
+ },
+ "MLB78751661": {
+  "categoria": "Acessórios para Veículos",
+  "de": 69.9,
+  "desconto": 69,
+  "foto": "https://http2.mlstatic.com/D_NQ_NP_879031-MLA116990360759_082026-F.jpg",
+  "id": "MLB78751661",
+  "item_id": "MLB5171684049",
+  "link_produto": "https://www.mercadolivre.com.br/p/MLB78751661",
+  "nome": "Camera De Ré HD 180° Automotiva Traseira Borboleta 2 em 1 Á Prova D'água Visão Noturna Pholex",
+  "por": 21.79,
+  "quando": 1792273751.9142976,
   "tipo": "PRODUCT"
  }
 }
