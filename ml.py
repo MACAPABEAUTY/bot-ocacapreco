@@ -118,7 +118,8 @@ def token():
         "refresh_token": t["refresh_token"],
     })
     if st != 200 or "access_token" not in resp:
-        raise ErroML(f"A conexão com o Mercado Livre expirou ({st}). Mande /conectar de novo.")
+        detalhe = (resp.get("message") or resp.get("error") or "") if isinstance(resp, dict) else ""
+        raise ErroML(f"A conexão com o Mercado Livre expirou ({st} {detalhe}). Mande /conectar de novo.")
     _salvar_token(resp)
     return resp["access_token"]
 
