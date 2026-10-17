@@ -159,7 +159,11 @@ def _melhor_anuncio(product_id):
     anuncios = [a for a in (resp.get("results") or []) if a.get("item_id") and a.get("price")]
     if not anuncios:
         return None, None, None
-    a = min(anuncios, key=lambda x: float(x["price"]))
+    menor = min(float(x["price"]) for x in anuncios)
+    # entre os anúncios com o menor preço (até 3% acima), prefere o que mostra preço antigo
+    perto = [x for x in anuncios if float(x["price"]) <= menor * 1.03]
+    com_de = [x for x in perto if x.get("original_price") and float(x["original_price"]) > float(x["price"])]
+    a = min(com_de or perto, key=lambda x: float(x["price"]))
     de = a.get("original_price")
     return a["item_id"], float(a["price"]), (float(de) if de else None)
 
@@ -182,9 +186,8 @@ def detalhes(id_, tipo="ITEM"):
         if not item_id:
             return None
         info["item_id"] = item_id
-        p_sp, d_sp = _preco_item(item_id)
-        if p_sp is not None:
-            por, de = p_sp, (d_sp or de)
+        if por is None:  # só consulta o anúncio quando a lista não trouxe o preço
+            por, de = _preco_item(item_id)
         if por is None and bbw.get("price"):
             por, de = float(bbw["price"]), (float(bbw["original_price"]) if bbw.get("original_price") else None)
     else:
