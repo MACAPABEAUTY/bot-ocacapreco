@@ -1,7 +1,31 @@
 {
   "canal": "@ocacapreco",
   "redirect_uri": "https://github.com/MACAPABEAUTY/bot-ocacapreco",
-  "instagram": {"feed": true, "story": true},
+  "afiliado": {
+    "matt_word": "rolu1681506",
+    "matt_tool": "78322147"
+  },
+  "auto": {
+    "ativo": true,
+    "por_hora": 10,
+    "horario": [8, 23],
+    "intervalo_segundos": 20,
+    "desconto_minimo": 15,
+    "categorias_por_rodada": 8,
+    "instagram_horas": [10, 13, 17, 20],
+    "meta": 5000,
+    "avisar_cada_rodada": true
+  },
+  "instagram": {
+    "feed": true,
+    "story": false
+  },
+  "comente": {
+    "ativo": true,
+    "palavra": "QUERO",
+    "direct": "Oi! 🎯 Aqui está o link de {nome}:\n{link}\n\n🔥 Mais ofertas todo dia no nosso canal: {canal}",
+    "publico": "Te mandei no Direct! 📩 Confere lá 😉"
+  },
   "desconto_minimo": 20,
   "max_sugestoes_por_busca": 6,
   "produtos_por_categoria": 15,
@@ -11,6 +35,20 @@
     "MLB5726": "Eletrodomésticos",
     "MLB1000": "Eletrônicos, Áudio e Vídeo",
     "MLB1051": "Celulares e Telefones",
-    "MLB1276": "Esportes e Fitness"
+    "MLB1276": "Esportes e Fitness",
+    "MLB1430": "Calçados, Roupas e Bolsas",
+    "MLB1648": "Informática",
+    "MLB1132": "Brinquedos e Hobbies",
+    "MLB1384": "Bebês",
+    "MLB1071": "Animais",
+    "MLB264586": "Saúde",
+    "MLB1403": "Alimentos e Bebidas",
+    "MLB263532": "Ferramentas",
+    "MLB1500": "Construção",
+    "MLB1144": "Games",
+    "MLB1747": "Acessórios para Veículos",
+    "MLB3937": "Joias e Relógios",
+    "MLB1039": "Câmeras e Acessórios",
+    "MLB1196": "Livros, Revistas e Comics"
   }
 }
