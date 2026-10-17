@@ -1,0 +1,23 @@
+name: Bot O Caça Preço
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # confere mensagens novas a cada ~10 minutos
+  workflow_dispatch:          # botão "Run workflow" para rodar na hora
+
+concurrency:
+  group: bot-ocacapreco
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ler mensagens e publicar no canal
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          OWNER_ID: ${{ secrets.OWNER_ID }}
+          CANAL: "@ocacapreco"
+        run: python3 bot.py
